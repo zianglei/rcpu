@@ -1,20 +1,3 @@
-use std::vec::Vec;
+mod cpu;
 
-#[derive(Debug)]
-pub struct CPU {
-        
-}
-
-impl CPU {
-    pub fn load_elf(&self, bin: &Vec<u8>) -> &Self {
-        self
-    } 
-
-    pub fn run(&self) -> &RegFile {
-        
-    }
-}
-
-pub fn new() -> CPU {
-    CPU{}
-}
+pub use cpu::CPU;
