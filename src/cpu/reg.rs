@@ -16,10 +16,10 @@ impl<T: Default + Copy> Reg<T> {
         }
     }
 
-    pub fn init(value: T) -> Reg<T> {
+    pub fn new(init: T) -> Reg<T> {
         Reg {
             enable: true,
-            prev: value,
+            prev: init,
             next: T::default(),
         }
     }
@@ -52,9 +52,9 @@ where T: Copy {
 
 #[test]
 fn test_reg_default() {
-    let reg = Reg::<u64>::init(0);
+    let reg = Reg::<u64>::new(0);
     assert_eq!(reg.get(), 0 as u64);
-    let reg = Reg::<u64>::init(0xffffffffffffffff);
+    let reg = Reg::<u64>::new(0xffffffffffffffff);
     assert_eq!(reg.get(), 0xffffffffffffffff);
 }
 

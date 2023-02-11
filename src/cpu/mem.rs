@@ -21,7 +21,7 @@ pub struct Mem {
     raddr: u64,
     waddr: u64,
     wdata: u8,
-    pub out: Reg<u8>,
+    pub out: Reg<u32>,
     mem: [u8; MEMSIZE],
     curpc: u64,
 }
@@ -34,7 +34,7 @@ impl Mem {
             waddr: 0,
             wen: false,
             wdata: 0,
-            out: Reg::<u8>::new(),
+            out: Reg::<u32>::default(),
             mem: [0; MEMSIZE],
             curpc: INSTBASE,
         }
@@ -86,7 +86,7 @@ impl Tickable for Mem {
             }
             self.wen = false;
             self.out.tick();
-            let rdata = self.mem[self.raddr as usize];
+            let rdata = self.read_u32(self.raddr);
             self.out.set(rdata);
         } 
     }

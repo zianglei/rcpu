@@ -1,7 +1,9 @@
-use std::{vec::Vec, error::Error, io};
+use std::{vec::Vec, error::Error, io, sync::mpsc, thread, time::Duration};
 use super::reg::Reg;
 use super::mem::Mem;
-use super::traits::DebugUI;
+use super::traits::{DebugUI, Tickable};
+use super::pipeline::Fetch;
+use termion::event::Event;
 use termion::{
     event::Key,
     input::{MouseTerminal, TermRead},
@@ -17,6 +19,12 @@ use tui::{
 
 type CPUResult = Result<(), Box<dyn Error>>;
 
+const DEFAULT_PC: u64 = 0x80000000;
+
+enum CPUEvent {
+    Input(Key),
+}
+
 #[derive(Debug)]
 pub struct RegFile<T> {
     a0: Reg<T>,
@@ -25,7 +33,7 @@ pub struct RegFile<T> {
 impl<T> RegFile<T> where T: Copy + Default{
     pub fn new() -> RegFile<T> {
         RegFile {
-            a0: Reg::<T>::new(),
+            a0: Reg::<T>::default(),
         }
     }
 
@@ -38,6 +46,7 @@ impl<T> RegFile<T> where T: Copy + Default{
 pub struct CPU {
     regs: RegFile<u64>,
     mem: Mem,
+    pub fetch: Fetch,
 }
 
 impl CPU {
@@ -53,8 +62,22 @@ impl CPU {
     pub fn new() -> CPU {
         CPU {
             regs: RegFile::new(),
-            mem: Mem::new()
+            mem: Mem::new(),
+            fetch: Fetch::new(DEFAULT_PC),
         }
+    }
+
+    pub fn set_start_pc(&mut self, start_pc: u64) -> &Self {
+        self.fetch = Fetch::new(start_pc);
+        self
+    }
+}
+
+impl Tickable for CPU {
+    fn tick(&mut self) {
+        self.fetch.run();
+
+        self.fetch.tick();
     }
 }
 
@@ -74,13 +97,38 @@ impl CPU {
         let backend = TermionBackend::new(stdout);
         let mut terminal = Terminal::new(backend)?;
 
+        let events = CPU::events(); 
+
         loop {
-            terminal.draw(|f| self.draw(f));
+            terminal.draw(|f| self.draw(f))?;
+            match events.recv()? {
+                CPUEvent::Input(key) => match key {
+                    Key::Char(c) => match c {
+                        'q' => break,
+                        _ => {}
+                    }
+                    _ => {}
+                },
+            }
         }
 
 
-        Ok(())
- 
+        Ok(()) 
     } 
+
+    fn events() -> mpsc::Receiver<CPUEvent> {
+        let (tx, rx) = mpsc::channel();
+        let keys_tx = tx.clone();
+        thread::spawn(move || {
+            let stdin = io::stdin();
+            for key in stdin.keys().flatten() {
+                if let Err(err) = keys_tx.send(CPUEvent::Input(key)) {
+                    eprintln!("{}", err);
+                    return;
+                }
+            }
+        });
+        rx   
+    }
 }
 
